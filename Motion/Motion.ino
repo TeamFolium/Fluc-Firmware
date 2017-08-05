@@ -41,6 +41,10 @@ void setup() {
         Fastwire::setup(400, true);
     #endif
 
+    Serial.begin(9600); // Opens the serial port with 115200 baud.
+
+    mpu.initialize();
+    pinMode(INTERRUPT_PIN, INPUT);
     devStatus = mpu.dmpInitialize(); // Initialize the device.
 
     // CALIBRATION ROUTINE, USE THE CALIBRATION SKETCH AND WRITE THE VALUES DOWN.
@@ -86,8 +90,32 @@ void loop() {
     // Get current FIFO count
     fifoCount = mpu.getFIFOCount();
 
-    // Display yaw/pitch/roll in degrees:
-    mpu.dmpGetQuaternion(&q, fifoBuffer); // Gets current Quaternion from FIFO.
-    mpu.dmpGetGravity(&gravity, &q); // Calculates gravity.
-    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity); // Gets yaw/pitch/roll
+    if ((mpuIntStatus & 0x10) || fifoCount == 1024) // Checks for overflows.
+    {
+        mpu.resetFIFO(); // Resets FIFO so we can continue cleanly.
+    }
+    else if (mpuIntStatus & 0x02) // Check for DMP data ready interrupt
+    {
+        // Wait for correct available data length:
+        while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+
+        // Read packet from FIFO:
+        mpu.getFIFOBytes(fifoBuffer, packetSize);
+
+        // Track FIFO count here in case there is > 1 packet available
+        fifoCount -= packetSize;
+
+        // Display yaw/pitch/roll in degrees:
+        mpu.dmpGetQuaternion(&q, fifoBuffer); // Gets current Quaternion from FIFO.
+        mpu.dmpGetGravity(&gravity, &q); // Calculates gravity.
+        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity); // Gets yaw/pitch/roll
+        Serial.print("Yaw | Pitch | Roll\t");
+        // Multiplies by 180/Pi for degrees convertion.
+        Serial.print(ypr[0] * 180/M_PI);
+        Serial.print("\t");
+        Serial.print(ypr[1] * 180/M_PI);
+        Serial.print("\t");
+        Serial.println(ypr[2] * 180/M_PI);
+    }
+
 }
