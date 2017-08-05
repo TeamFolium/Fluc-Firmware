@@ -60,6 +60,13 @@ void setup() {
         // Get expected DMP packet size for later comparison:
         packetSize = mpu.dmpGetFIFOPacketSize();
     }
+    else // Error! 1 = Initial memory load failed. 2 = DMP configuration updates failed.
+    {
+        // ERROR REPORTING (SERIAL MONITOR):
+        Serial.print(F("DMP Initialization failed (code "));
+        Serial.print(devStatus);
+        Serial.println(F(")"));
+    }
 
 }
 
