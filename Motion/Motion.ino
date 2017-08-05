@@ -7,7 +7,8 @@
 
 MPU6050 mpu;
 
-//#define OUTPUT_READABLE_YAWPITCHROLL // yaw/pitch/roll angles calculated from the quaternions coming from the FIFO.
+//#define OUTPUT_READABLE_GYRO // yaw/pitch/roll angles calculated from the quaternions coming from the FIFO.
+#define OUTPUT_READABLE_ACCEL // Acceleration, adjusted to remove gravity
 #define INTERRUPT_PIN 2 // Interrupt pin
 
 // MPU control/status vars
@@ -104,18 +105,33 @@ void loop() {
 
         // Track FIFO count here in case there is > 1 packet available
         fifoCount -= packetSize;
+        #ifdef OUTPUT_READABLE_GYRO
+            // Display yaw/pitch/roll in degrees:
+            mpu.dmpGetQuaternion(&q, fifoBuffer); // Gets current Quaternion from FIFO.
+            mpu.dmpGetGravity(&gravity, &q); // Calculates gravity.
+            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity); // Gets yaw/pitch/roll
+            Serial.print("Yaw | Pitch | Roll\t");
+            // Multiplies by 180/Pi for degrees convertion.
+            Serial.print(ypr[0] * 180/M_PI);
+            Serial.print("\t");
+            Serial.print(ypr[1] * 180/M_PI);
+            Serial.print("\t");
+            Serial.println(ypr[2] * 180/M_PI);
+        #endif
 
-        // Display yaw/pitch/roll in degrees:
-        mpu.dmpGetQuaternion(&q, fifoBuffer); // Gets current Quaternion from FIFO.
-        mpu.dmpGetGravity(&gravity, &q); // Calculates gravity.
-        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity); // Gets yaw/pitch/roll
-        Serial.print("Yaw | Pitch | Roll\t");
-        // Multiplies by 180/Pi for degrees convertion.
-        Serial.print(ypr[0] * 180/M_PI);
-        Serial.print("\t");
-        Serial.print(ypr[1] * 180/M_PI);
-        Serial.print("\t");
-        Serial.println(ypr[2] * 180/M_PI);
+        #ifdef OUTPUT_READABLE_ACCEL
+            mpu.dmpGetQuaternion(&q, fifoBuffer); // Gets current Quaternion from FIFO.
+            mpu.dmpGetAccel(&aa, fifoBuffer); // Gets current acceleration.
+            mpu.dmpGetGravity(&gravity, &q); // Calculates gravity.
+            // Calculates linear acceleration:
+            mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
+            Serial.print("Acceleration X | Y | Z:\t");
+            Serial.print(aaReal.x);
+            Serial.print("\t");
+            Serial.print(aaReal.y);
+            Serial.print("\t");
+            Serial.println(aaReal.z);
+        #endif
     }
 
 }
