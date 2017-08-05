@@ -7,7 +7,7 @@
 
 MPU6050 mpu;
 
-#define OUTPUT_READABLE_YAWPITCHROLL // yaw/pitch/roll angles calculated from the quaternions coming from the FIFO.
+//#define OUTPUT_READABLE_YAWPITCHROLL // yaw/pitch/roll angles calculated from the quaternions coming from the FIFO.
 #define INTERRUPT_PIN 2 // Interrupt pin
 
 // MPU control/status vars
@@ -71,6 +71,23 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+    // if the initialization failed, don't do anything:
+    if (!dmpReady) return;
 
+    // Wait for MPU interrupt or extra packet(s) available
+    while (!mpuInterrupt && fifoCount < packetSize) {
+        // TODO: other program behavior
+    }
+
+    // reset interrupt flag and get INT_STATUS byte
+    mpuInterrupt = false;
+    mpuIntStatus = mpu.getIntStatus();
+
+    // Get current FIFO count
+    fifoCount = mpu.getFIFOCount();
+
+    // Display yaw/pitch/roll in degrees:
+    mpu.dmpGetQuaternion(&q, fifoBuffer); // Gets current Quaternion from FIFO.
+    mpu.dmpGetGravity(&gravity, &q); // Calculates gravity.
+    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity); // Gets yaw/pitch/roll
 }
