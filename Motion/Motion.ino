@@ -1,5 +1,6 @@
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
+#include <SoftwareSerial.h>
 
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
     #include "Wire.h"
@@ -7,8 +8,8 @@
 
 MPU6050 mpu;
 
-//#define OUTPUT_READABLE_GYRO // yaw/pitch/roll angles calculated from the quaternions coming from the FIFO.
-#define OUTPUT_READABLE_ACCEL // Acceleration, adjusted to remove gravity
+#define OUTPUT_READABLE_GYRO // yaw/pitch/roll angles calculated from the quaternions coming from the FIFO.
+//#define OUTPUT_READABLE_ACCEL // Acceleration, adjusted to remove gravity
 #define INTERRUPT_PIN 2 // Interrupt pin
 
 // MPU control/status vars
@@ -34,6 +35,8 @@ void dmpDataReady() {
     mpuInterrupt = true;
 }
 
+SoftwareSerial BTserial(10, 11); // RX | TX
+
 void setup() {
     #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
         Wire.begin();
@@ -42,7 +45,8 @@ void setup() {
         Fastwire::setup(400, true);
     #endif
 
-    Serial.begin(9600); // Opens the serial port with 115200 baud.
+    //Serial.begin(9600); // Opens the serial port with 9600 baud.
+    BTserial.begin(9600); // Opens the SW Serial port with 9600 baud.
 
     mpu.initialize();
     pinMode(INTERRUPT_PIN, INPUT);
@@ -68,9 +72,9 @@ void setup() {
     else // Error! 1 = Initial memory load failed. 2 = DMP configuration updates failed.
     {
         // ERROR REPORTING (SERIAL MONITOR):
-        Serial.print(F("DMP Initialization failed (code "));
+        /*Serial.print(F("DMP Initialization failed (code "));
         Serial.print(devStatus);
-        Serial.println(F(")"));
+        Serial.println(F(")"));*/
     }
 
 }
@@ -110,13 +114,25 @@ void loop() {
             mpu.dmpGetQuaternion(&q, fifoBuffer); // Gets current Quaternion from FIFO.
             mpu.dmpGetGravity(&gravity, &q); // Calculates gravity.
             mpu.dmpGetYawPitchRoll(ypr, &q, &gravity); // Gets yaw/pitch/roll
-            Serial.print("Yaw | Pitch | Roll\t");
+            //Serial.print("Yaw | Pitch | Roll\t");
             // Multiplies by 180/Pi for degrees convertion.
-            Serial.print(ypr[0] * 180/M_PI);
+            float yaw = ypr[0] * 180/M_PI;
+            float pitch = ypr[1] * 180/M_PI;
+            float roll = ypr[2] * 180/M_PI;
+            /*Serial.print(ypr[0] * 180/M_PI);
             Serial.print("\t");
             Serial.print(ypr[1] * 180/M_PI);
             Serial.print("\t");
-            Serial.println(ypr[2] * 180/M_PI);
+            Serial.println(ypr[2] * 180/M_PI);*/
+
+            BTserial.print(yaw);
+            BTserial.print(",");
+            BTserial.print(pitch);
+            BTserial.print(",");
+            BTserial.print(roll);
+            BTserial.print(";");
+            delay(200);
+
         #endif
 
         #ifdef OUTPUT_READABLE_ACCEL
@@ -125,12 +141,12 @@ void loop() {
             mpu.dmpGetGravity(&gravity, &q); // Calculates gravity.
             // Calculates linear acceleration:
             mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-            Serial.print("Acceleration X | Y | Z:\t");
+            /*Serial.print("Acceleration X | Y | Z:\t");
             Serial.print(aaReal.x);
             Serial.print("\t");
             Serial.print(aaReal.y);
             Serial.print("\t");
-            Serial.println(aaReal.z);
+            Serial.println(aaReal.z);*/
         #endif
     }
 
